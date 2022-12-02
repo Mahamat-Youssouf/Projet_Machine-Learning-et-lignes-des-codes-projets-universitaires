@@ -1,0 +1,765 @@
+---
+title: "Etudes des cas"
+output: word_document
+date: "2022-10-07"
+---
+
+
+```{r}
+#Creation d'un repertoir
+setwd("C:/Users/maham/Desktop/Cours M2 _EA _Semestre3_2022-2023/Etudes des cas sur R")
+getwd()
+projet<-read.csv("ParticipationFemmesMT_EXCEL_26092022.csv",sep=";")
+attach(projet)
+head(projet)
+```
+
+
+
+
+```{r}
+##############Installation et chargement des pakages########################
+#install.packages("AER")
+library(AER)
+#install.packages("memisc")
+library(memisc)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages('aod')
+library(aod)
+#install.packages("pROC")
+library(pROC)
+#install.packages("ROCit")
+library(ROCit)
+#install.packages('margins')
+library("margins")
+#install.packages("blorr")
+library("blorr")
+library("Hmisc")
+```
+
+
+
+
+```{r}
+Calculer_taux_erreur<-function(modele,donnees){
+  #obtenir la proba d'etre positif
+  pplus<-predict(modele,newdata=donnees,type="response")
+  #obtenir la prediction
+  prediction<-as.factor(ifelse(pplus>0.5,1,0))
+  #calculer la MC
+  mc<-table(projet.test$inlf,prediction)
+  cat("Matrice de confusion:\n")
+  print(mc)
+  #Calcul du taux d'erreur
+  err.rate<-(mc[2,1]+mc[1,2])/sum(mc)
+  cat("\nTaux d'erreur:")
+  cat(err.rate)
+}
+```
+
+
+
+
+
+```{r}
+############Importation de la base des données###############################
+projet.app<-xlsx::read.xlsx(file ="apprentissage_test_Corrige_outliers.xlsx",header = TRUE ,stringsAsFactors = TRUE,sheetIndex = "apprentissage" )
+attach(projet.app)
+projet.test<-xlsx::read.xlsx(file ="apprentissage_test_Corrige_outliers.xlsx",header = TRUE ,stringsAsFactors = TRUE,sheetIndex = "test" )
+attach(projet.test)
+```
+
+
+
+
+```{r}
+#######Structure de la base des données
+projet.app$inlf<-factor(projet.app$inlf)
+projet.app$city<-factor(projet.app$city)
+projet.test$inlf<-factor(projet.test$inlf)
+projet.test$city<-factor(projet.test$city)
+
+str(projet.app)
+str(projet.test)
+```
+
+
+```{r}
+###############Statistiques univariées#########################################
+summary(projet.app)
+```
+
+```{r}
+summary(projet.test)
+```
+
+```{r}
+#library(lattice)
+#hist.data.frame(projet.app)
+```
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~huswage|inlf,type="percent",col="grey",data=projet.app,breaks = 10,layout = c(2,1), aspect = 1)
+```
+
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~kidslt6|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~kidsge6|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~exper|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~educ|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~huseduc|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~faminc|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~unem|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+library(lattice)
+histogram(~motheduc|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+histogram(~fatheduc|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+
+
+
+
+```{r}
+#Analyse de quelques variables continues
+histogram(~husage|inlf,type="percent",col="grey",data=projet.app,breaks = 10)
+```
+
+
+```{r}
+############Determination de la categorie de reference#################
+#La categorie la plus reprensentée dans l'echantillon constitue la modalité de reference
+#La modalité la plus representée dans city est zone urbaine
+#projet.app$city <-  relevel(city, ref = 0)
+```
+ 
+ 
+ 
+ 
+```{r}
+#######################Estimation d'un modèle logit vide que l'on note M0######
+M0<- glm(inlf ~ 1, family = binomial(link = "logit"), data=projet.app)
+summary (M0)
+exp(coef(M0))#odd
+1/(1+exp(coef(M0)))
+(exp(coef(M0))/(1+exp(coef(M0))))#moyenne empirique des femmes ayant une activité
+0.568/0.432  #la cote(odd)
+```
+ 
+ 
+ 
+ 
+## Modèle complet avec toutes les variables:
+
+
+```{r}
+#projet$wage<-NULL# Suppression de salaire(wage)
+#projet$hours<-NULL
+
+#######################Estimation d'un modèle logit M######
+logit.app1<- glm(inlf ~ ., family = binomial(link = "logit"), data=projet.app)
+summary(logit.app1)
+coef(logit.app1)#Log(OR)
+OR <-exp(coef(logit.app1))
+OR
+```
+
+```{r}
+# Attribut du modele M
+print(attributes(logit.app1))
+```
+
+## R2 Marcfanden:
+
+```{r}
+LL1<- logit.app1$deviance/(-2)# Log-vraissemblance du mode complet
+LL0<- logit.app1$null.deviance/(-2)# Log-vraissemblance du mode vide
+R2MF<- 1.0-LL1/LL0
+R2MF
+# Proche de 0 le modèle ne fait pas mieux que le pire modèle(aucune variable explicative).
+# 1 le modèle est parfait.
+```
+
+```{r}
+# Test de significativité globale
+# Chi2 du rapport de vraisemblance:
+chi2<- logit.app1$null.deviance-logit.app1$deviance
+chi2
+```
+
+```{r}
+# Degré de Liberté:
+ddl<- logit.app1$df.null-logit.app1$df.residual
+ddl
+```
+
+
+```{r}
+# Pvalue:
+pvalue<- pchisq(chi2,ddl,lower.tail = FALSE)
+print(pvalue)
+#on rejette l'hypothèse nulle, alors le modèle complet fait mieux que le modèle vide car
+# La pvalue etant tres faible donc le modèle est tres significatif;
+```
+
+## Ou Test de rapport de vraisemblance entre les modèles M0 et M1(logit.app1)####
+
+```{r}
+lrtest(M0,logit.app1)
+```
+
+
+#Evaluation prédictive du modèle
+
+```{r}
+#Prédiction
+ Proba<- predict(logit.app1,newdata = projet.test,type = "response")
+#Affichage pour les premiers individus
+Proba
+```
+
+```{r}
+#Conversion des proba d'affectations en classes prédites
+pred<-factor(ifelse(Proba>0.5,1,0))
+#┘Distributions des prbabilités predites
+print(table(pred))
+
+```
+
+```{r}
+#Matrice de confusions :classes predites vs classes réelles
+mc<-print(table(projet.test$inlf,pred))
+#La part d'observation bien classées est de 120 femmes ayant une activité professionnelle soit un taux de 77,92%
+```
+
+```{r}
+#Calcul du taux d'erreur
+
+err<- 1-sum(diag(mc))/sum(mc)
+err
+```
+#Calcul du taux d'erreur avec la fonction taux d'erreur
+
+```{r}
+Calculer_taux_erreur(logit.app1,projet.test)
+```
+
+
+#Evaluation des variables via le test de significativité
+
+```{r}
+#Test de wal pour l'evaluation des variables
+logit.app1<- glm(inlf ~ ., family = binomial(link = "logit"), data=projet.app)
+summary(logit.app1)
+```
+
+
+
+#selection des variable Critère AIC backward(elimination)
+
+```{r}
+library(MASS)
+logit_Aic_bac<-stepAIC(logit.app1,data=projet.app, direction = "backward")
+summary(logit_Aic_bac)
+```
+
+```{r}
+#Calcul du taux d'erreur
+
+Calculer_taux_erreur(logit_Aic_bac,projet.test)
+```
+
+
+
+  
+```{r}
+summary(logit_Aic_bac)
+```
+
+#selection des variable Critère AIC forward
+
+```{r}
+library(MASS)
+str_full <- "~ kidslt6 + kidsge6 + age + educ + hushrs + husage + huseduc + 
+    huswage + faminc + motheduc + fatheduc + unem + city + exper"
+logit_Aic_for<- stepAIC(M0,scope = list(lower = "~1",
+upper = str_full), trace = TRUE, data = projet.app, direction = "forward")
+#affichage du modèle final
+summary(logit_Aic_for)
+```
+
+```{r}
+#Calcul du taux d'erreur aic forward
+
+Calculer_taux_erreur(logit_Aic_for,projet.test)
+```
+
+#Estimation du modele dont les variables rejetées par le critère AIC forward(): son AIC =690,91 est plus élévé que celui de modele trivial(AIC =685.87)
+
+
+```{r}
+logit.AIC_pire<- glm(inlf ~fatheduc+motheduc+husage+kidsge6+unem+city+huseduc, family = binomial(link = "logit"), data=projet.app)
+summary(logit.AIC_pire)
+```
+
+
+
+
+```{r}
+print(attributes(logit_Aic_bac))
+
+```
+
+
+#selection des variable Critère BIC backward(ou selection descendante ou elimination)
+
+
+```{r}
+logit_bac_bic <- stepAIC(logit.app1, data=projet.app,direction = "backward",k=log(nrow(projet.app)))
+summary(logit_bac_bic)
+```
+
+```{r}
+#Calcul du taux d'erreur BIC backward
+
+Calculer_taux_erreur(logit_bac_bic,projet.test)
+```
+
+#selection des variable Critère BIC forward(ou selection ascendante)
+
+
+```{r}
+logit_for_bic <- stepAIC(M0,data=projet.app, scope = list(lower ="~1",  upper =as.formula(logit.app1)),direction="forward",k=log(nrow(projet.app)))
+                        
+summary(logit_for_bic)
+```
+
+
+
+```{r}
+#Calcul du taux d'erreur
+
+Calculer_taux_erreur(logit_for_bic,projet.test)
+```
+
+
+
+```{r}
+Tableau1 <-mtable("Modèle trivial"=M0,"Modèle complet"=logit.app1,"ModèleAIC_bac"=logit_Aic_bac,"ModèleAIC_for"=logit_Aic_for,"ModèleBIC_bac"=logit_bac_bic,"ModèleBIC_for"=logit_for_bic,"Modèle pire"=logit.AIC_pire, coef.style="stat",summary.stats=c("Deviance","AIC","BIC","Likelihood-ratio","p","R","N"))
+Tableau1
+```
+
+
+
+#Performence predictive du modele après selection des variables sur critère AIC 
+
+
+```{r}
+Proba_aic<- predict(logit_Aic_bac,newdata = projet.test,type = "response")
+#range(Proba_aic)
+#Affichage pour les premiers individus
+head(Proba_aic)
+```
+
+
+
+```{r}
+#Conversion des proba d'affectations en classes prédites après selection des variables(AIC)
+pred_aic<-factor(ifelse(Proba_aic>0.5,1,0))
+#┘Distributions des prbabilités predites
+print(table(pred_aic))
+```
+
+
+
+```{r}
+#Matrice de confusions :classes predites vs classes réelles après selection des variables(AIC )
+MC_aic<-print(table(projet.test$inlf,pred_aic))
+#La part d'observation bien classées est de 120 femmes ayant une activité professionnelle soit un taux de 77,92%
+```
+
+
+
+```{r}
+#Calcul du taux d'erreur du modèle après selection des variables(AIC)
+
+err1<- 1-sum(diag(MC_aic))/sum(MC_aic)
+err1
+#Le taux d'erreur diminue faiblement relativement à celui du modele complet(22,92%)
+```
+
+
+#Performence predictive du modele sur les données test après selection des variables sur critère BIC
+
+```{r}
+Proba_bic<-predict(logit_bac_bic,newdata = projet.test, type = "response")
+head(Proba_bic)
+```
+
+
+
+
+
+```{r}
+#Conversion des proba d'affectations en classes prédites après selection des variables (BIC)
+pred_bic<-factor(ifelse(Proba_bic>0.5,1,0))
+#┘Distributions des prbabilités predites
+print(table(pred_bic))
+
+```
+
+
+
+
+```{r}
+#Matrice de confusions :classes predites vs classes réelles après selection des variables(BIC )
+MC_bic<-print(table(projet.test$inlf,pred_bic))
+#La part d'observation bien classées est de 120 femmes ayant une activité professionnelle soit un taux de 77,92%
+```
+
+
+
+
+```{r}
+#Calcul du taux d'erreur du modèle après selection des variables(BIC)
+
+err2<- 1-sum(diag(MC_bic))/sum(MC_bic)
+err2
+#Le taux d'erreur diminue faiblement relativement à celui du modele complet(22,92%)
+```
+
+
+
+
+
+```{r}
+#Attribues du modele selection selon BIC 
+attributes(logit_bac_bic)
+```
+
+
+
+
+
+```{r}
+#Le champs anova
+print((logit_bac_bic$anova))
+```
+
+
+
+
+
+```{r}
+#Graphique :evolutions du critère BIC en fonction du nombre des variables selectionnées
+par(mfrow = c(2,2))
+plot(0:(nrow(logit_for_bic$anova)-1),logit_for_bic$anova[,"AIC"],type="b",
+xlab="variables selectionnées",ylab="BIC",main="Selection forward(BIC)",col = "green")
+#Graphique :evolutions du critère BIC en fonction du nombre des variables rétirées
+plot(0:(nrow(logit_bac_bic$anova)-1),logit_bac_bic$anova[,"AIC"],type="b",
+xlab="variables rétirées",ylab="BIC",main="Selection backward(BIC)",col = "red")
+#Graphique :evolutions du critère AIC en fonction du nombre des variables selectionnées
+plot(0:(nrow(logit_Aic_for$anova)-1),logit_Aic_for$anova[,"AIC"],type="b",
+xlab="variables selectionnées",ylab="AIC",main="Selection forward(AIC)",col = "blue")
+#Graphique :evolutions du critère BIC en fonction du nombre des variables rétirées
+plot(0:(nrow(logit_Aic_bac$anova)-1),logit_Aic_bac$anova[,"AIC"],type="b",
+xlab="variables rétirées",ylab="AIC",main="Selection backward(AIC)",col = "purple")
+```
+
+
+
+#### Courbes ROC des modèles M0, M1, M2 et M3 ###############
+
+
+```{r}
+#### Courbes ROC des modèles M0, M1, M2, M3, M4, M5 et M3 ###############
+
+projet.app$pr_Modele_vide<-predict(M0,type=c("response"))
+projet.app$pr_Modele1<-predict(logit.app1,type=c("response"))
+projet.app$pr_Modele2<-predict(logit_Aic_bac,type=c("response"))
+projet.app$pr_Modele3<-predict(logit_Aic_for,type=c("response"))
+projet.app$pr_Modele4<-predict(logit_bac_bic,type=c("response"))
+projet.app$pr_Modele5<-predict(logit_for_bic,type=c("response"))
+projet.app$pr_Modele6<-predict(logit.AIC_pire,type=c("response"))
+
+#View(projet.app)
+
+#roc0=roc(inlf ~ pr_Modele_vide,projet.app)
+#roc1=roc(inlf ~ pr_Modele1,projet.app)
+#roc2=roc(inlf ~ pr_Modele2,projet.app)
+#roc3=roc(inlf ~ pr_Modele3,projet.app)
+
+#ou
+roc0=roc(projet.app$inlf,projet.app$pr_Modele_vide)
+roc1=roc(projet.app$inlf,projet.app$pr_Modele1)
+roc2=roc(projet.app$inlf,projet.app$pr_Modele2)
+roc3=roc(projet.app$inlf,projet.app$pr_Modele3)
+roc4=roc(projet.app$inlf,projet.app$pr_Modele4)
+roc5=roc(projet.app$inlf,projet.app$pr_Modele5)
+roc6=roc(projet.app$inlf,projet.app$pr_Modele6)
+
+```
+
+
+
+
+
+
+
+```{r}
+#par(mfrow = c(3,4))
+plot(roc0, col = "orange", xlab="1-specificité", ylab="sensibilté",main="Courbes de ROC des modèles logit")
+plot(roc1, add=TRUE, col='green')
+plot(roc2, add=TRUE, col='blue')
+plot(roc3, add=TRUE, col='red')
+legend(0,1, legend=c("Modele_vide:auc=0.5", "Modele1:auc=0.814", "Modele2:auc=0.8148", "Modele3:auc=0.8148"),
+       col=c("orange","green", "blue", "red"), lty=2:2,cex=0.6, title="Courbes de ROC")
+```
+
+
+
+
+
+```{r}
+plot(roc0, col = "orange", xlab="1-specificité", ylab="sensibilté",main="Courbes de ROC des modèles logit")
+plot(roc4, add=TRUE, col='purple')
+plot(roc5, add=TRUE, col='yellow')
+plot(roc6, add=TRUE, col='black')
+legend(0,1, legend=c("Modele_vide:auc=0.5","Modele4:auc=0.8148", "Modele5:auc=0.7821","Modele6:auc=0.5762"),
+       col=c("orange","purple","yellow","black"), lty=2:2,cex=0.6, title="Courbes de ROC")
+```
+
+
+
+
+
+
+#Determination de l'aire sous la courbe de ROC
+```{r}
+################### Aires sous les courbes de ROC########################333
+roc0$auc
+roc1$auc
+roc2$auc
+roc3$auc
+roc4$auc
+roc5$auc
+roc6$auc
+```
+
+
+##Définition du seuil utilisé et la matrice de confusion
+
+
+```{r}
+roc2$thresholds
+roc2$sensitivities
+roc2$specificities
+```
+
+
+
+
+
+
+```{r}
+#creation de la table contenant les seuils et les indicateurs
+roctable = data.frame("seuil"= roc1$thresholds, "se" = roc1$sensitivities, "sp" = roc1$specificities)
+#####index de youden
+roctable$youden <-  roctable$se + roctable$sp - 1
+#Ecart absolu entre Se et Sp
+roctable$dif = abs(roctable$se - roctable$sp)
+
+###distance au modèle parfait
+roctable$dist = ((1-roctable$sp)^2 + (1-roctable$se)^2 )^0.5
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+# repondération de Se et Sp
+prop.table(table(inlf))
+roctable$accuracy = 0.43083*roctable$se + 0.56917*roctable$sp
+```
+
+
+
+
+```{r}
+#Graphiques des seuil...
+plot(roctable$seuil, roctable$se,  col="green", xlab= "seuil de coupure", ylab = "sensibilité",main="Seuils des coupures")
+points(roctable$seuil,roctable$sp, col="red")
+points(roctable$seuil, roctable$youden, col="blue")
+points(roctable$seuil, roctable$dist, col="purple")
+points(roctable$seuil, roctable$accuracy, col="orange")
+legend(0.4,0.3, legend=c("sensibilité", "spécificité", "Index de Youden", "distance au modele parfait","precision"),
+       col=c("green","red","blue","purple","orange" ), lty=2:2,cex=0.62)
+```
+
+
+
+
+
+
+```{r}
+#####Recherche des seuils optimaux#########
+#youden max
+which.max(roctable$youden)
+coords(roc1, "best",  transpose = FALSE, best.method="youden") 
+```
+
+
+
+
+
+
+```{r}
+# Minimisation de la difference absolue entre Se et Sp
+which.min(roctable$dif)
+(points = c("Inf",sort(roctable$seuil)))[which.min(roctable$dif)+1]
+coords(roc2, transpose = FALSE,best.method="dif")
+```
+
+
+
+
+
+
+```{r}
+##Distance minimale au modèle parfait
+which.min(roctable$dist)
+coords(roc1, "best",  transpose = FALSE, best.method="closest.topleft") 
+```
+
+
+
+
+
+```{r}
+###Matrice de confusion################
+Dis<-0.5619039		        #Distance minimale au modèle parfait
+blr_confusion_matrix(logit_Aic_bac,Dis)
+```
+
+
+
+
+
+```{r}
+Tableau1 <-mtable("Modèle trivial"=M0,"Modèle complet"=logit.app1,"ModèleAIC_bac"=logit_Aic_bac,"ModèleAIC_for"=logit_Aic_for,"ModèleBIC_bac"=logit_bac_bic,"ModèleBIC_for"=logit_for_bic,"Modèle pire"=logit.AIC_pire, coef.style="stat",summary.stats=c("Deviance","AIC","BIC","Likelihood-ratio","p","R","N"))
+Tableau1
+```
+
+
+
+
+
+```{r}
+#library(texreg)
+#wordreg(list("Modèle trivial"=M0,"Modèle #complet"=logit.app1,"ModèleAIC_bac"=logit_Aic_bac,"ModèleAIC_for"=logit_Aic_for,"ModèleBIC_bac"=logit_bac_bic,"ModèleBIC_for#"=logit_for_bic,"Modèle #pire"=logit.AIC_pire),
+       #single.row =FALSE, stars = c(0.001, 0.01, 0.05, 0.1),
+         #digits = 3,no.space =TRUE,
+       # file = "tientcompteoutliers.doc",notes.append = TRUE,
+        #custom.coef.names= c("intrecept","Enfants<6ans","Enfants[6,18ans]",
+                             # "Age de la femme","Années d'éducation",
+                             # "Heures travaillées par le mari","Age du mari",
+                              # "Education du mari","Salaire horaire du mari",
+                              # "Revenu de la famille","Education de la mère","Education du père",
+                              # "Taux de chômage","Habite en zone urbaine:oui ",
+                               #"Expérience"))
+
+```
+
+
+
+
+
+
+```{r}
+#exp(cbind(OR = coef(mylogit), confint(mylogit))) 
+```
+
+  
